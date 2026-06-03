@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Church Live Control</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #111;
+      color: white;
+      padding: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    .live {
+      color: red;
+      font-size: 20px;
+    }
+
+    .box {
+      margin-top: 20px;
+      padding: 15px;
+      background: #222;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Church Live Control Panel</h1>
+
+<div id="status" class="box">
+  Loading...
+</div>
+
+<button onclick="setLive(true)">Go Live</button>
+<button onclick="setLive(false)">Stop Live</button>
+
+<br><br>
+
+<input id="title" placeholder="Stream title" />
+<button onclick="updateTitle()">Update Title</button>
+
+<script>
+const ip = "http://192.168.50.48:3000";
+
+async function loadStatus() {
+  const res = await fetch(ip + "/status");
+  const data = await res.json();
+
+  document.getElementById("status").innerHTML = `
+    <div class="${data.live ? 'live' : ''}">
+      LIVE: ${data.live}
+    </div>
+    Viewers: ${data.viewers}<br>
+    Title: ${data.title}
+  `;
+}
+
+async function setLive(state) {
+  await fetch(ip + (state ? "/live/on" : "/live/off"), {
+    method: "POST"
+  });
+  loadStatus();
+}
+
+async function updateTitle() {
+  const title = document.getElementById("title").value;
+
+  await fetch(ip + "/title", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title })
+  });
+
+  loadStatus();
+}
+
+setInterval(loadStatus, 2000);
+loadStatus();
+</script>
+
+</body>
+</html>

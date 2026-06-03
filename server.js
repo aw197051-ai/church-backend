@@ -1,101 +1,85 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// =======================
-// BASIC STATUS (HOME)
-// =======================
-app.get("/", (req, res) => {
-  res.json({
-    status: "online",
-    message: "Church backend running"
-  });
-});
-
-// =======================
-// LIVE STATUS SYSTEM
-// =======================
-// true = live, false = offline
-let isLive = false;
-
-// viewer counter (real-time placeholder)
+/*
+  CHURCH LIVE STATE
+*/
+let live = false;
 let viewers = 0;
+let streamTitle = "New Life Worship Center";
 
-// =======================
-// GET LIVE STATUS
-// =======================
-app.get("/api/status", (req, res) => {
-  res.json({
-    live: isLive,
-    viewers: isLive ? viewers : 0
-  });
-});
+/*
+  SCHEDULE (optional auto live)
+*/
+const schedule = {
+  sunday: "10:25",
+  wednesday: "18:55"
+};
 
-// =======================
-// START LIVE (ADMIN)
-// =======================
-app.post("/api/start", (req, res) => {
-  isLive = true;
-  viewers = 1;
-
-  console.log("🔴 LIVE STARTED");
-  res.json({ success: true, live: true });
-});
-
-// =======================
-// STOP LIVE (ADMIN)
-// =======================
-app.post("/api/stop", (req, res) => {
-  isLive = false;
-  viewers = 0;
-
-  console.log("⚫ LIVE STOPPED");
-  res.json({ success: true, live: false });
-});
-
-// =======================
-// SIMULATE VIEWERS (REAL SYSTEM LATER)
-// =======================
-setInterval(() => {
-  if (isLive) {
-    // small random growth
-    viewers += Math.floor(Math.random() * 3);
-    if (viewers < 1) viewers = 1;
-  }
-}, 5000);
-
-// =======================
-// SCHEDULE SYSTEM (BASIC)
-// Sunday 10:25 AM / Wed 6:55 PM (placeholder logic)
-// =======================
 function checkSchedule() {
   const now = new Date();
-  const day = now.getDay(); // 0 = Sunday
-  const hour = now.getHours();
-  const minute = now.getMinutes();
 
-  // Sunday 10:25
-  if (day === 0 && hour === 10 && minute === 25) {
-    isLive = true;
-  }
+  const time =
+    now.getHours().toString().padStart(2, "0") +
+    ":" +
+    now.getMinutes().toString().padStart(2, "0");
 
-  // Wednesday 6:55 PM (18:55)
-  if (day === 3 && hour === 18 && minute === 55) {
-    isLive = true;
+  if (time === schedule.sunday || time === schedule.wednesday) {
+    live = true;
   }
 }
 
-setInterval(checkSchedule, 60000);
+setInterval(checkSchedule, 30000);
 
-// =======================
-// SERVER START
-// =======================
-const PORT = process.env.PORT || 3000;
+/*
+  DASHBOARD PAGE
+*/
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "dashboard.html"));
+});
 
-app.listen(PORT, () => {
-  console.log("Church backend running on port " + PORT);
+/*
+  API
+*/
+app.get("/status", (req, res) => {
+  res.json({
+    live,
+    viewers,
+    title: streamTitle
+  });
+});
+
+app.post("/live/on", (req, res) => {
+  live = true;
+  res.json({ success: true, live });
+});
+
+app.post("/live/off", (req, res) => {
+  live = false;
+  res.json({ success: true, live });
+});
+
+app.post("/title", (req, res) => {
+  streamTitle = req.body.title || streamTitle;
+  res.json({ success: true, title: streamTitle });
+});
+
+app.post("/viewers", (req, res) => {
+  viewers = req.body.viewers || viewers;
+  res.json({ success: true, viewers });
+});
+
+/*
+  START SERVER (IMPORTANT for network access)
+*/
+const PORT = 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Church backend running on http://192.168.50.48:" + PORT);
 });
